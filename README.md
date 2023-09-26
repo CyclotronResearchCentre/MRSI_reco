@@ -1,8 +1,10 @@
 # SCAIFIELD MRSI analysis
 
+This tool performs the SCAIFIELD MRSI analysis
+
 ## Prerequisite
 
-- This tool performs the SCAIFIELD MRSI analysis
+- Data must already be in BIDSlike format
 - Some third party software
     - LCModel
     - FSL
@@ -24,6 +26,7 @@ python mrsi_analysis.py [-h] [--path PATH] [--site SITE] [--sub SUB] [--ses SES]
 You can find the output in
 
 ```path/derivatives/site/sub/ses/mrsi/lcm```
+
 ```path/derivatives/site/sub/ses/mrsi/maps```
 
 - lcm
