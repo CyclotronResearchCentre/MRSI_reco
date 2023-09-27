@@ -294,14 +294,12 @@ class mrsi_data():
 
                         print((i,j,k))
 
-    def call_lcm(self):
+    def call_lcm(self,p):
         print("open call_lcm")
         files = [os.path.join(self.path_lcm,f) for f in os.listdir(self.path_lcm) if ".control" in f]
         print(self.path_lcm)
         print(len(files))
 
-        p = 2
-        #fit_msk = functools.partial(fit)
         with Pool(p) as P:
             P.map(fit, files)
 
