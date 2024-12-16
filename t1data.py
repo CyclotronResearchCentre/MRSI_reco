@@ -10,7 +10,7 @@ class T1_image():
         self.sub  = sub
         self.ses  = ses
 
-        self.prefix = "%s_%s_%s_mprage"%(site,sub,ses)
+        self.prefix = "%s_%s_%s_mprage_LR"%(site,sub,ses)
 
         self.rawImage = ants.image_read(os.path.join(path,site,sub,ses,"magn",'%s.nii'%self.prefix))
         self.path_out = os.path.join(path,"derivatives",site,sub,ses,"magn")

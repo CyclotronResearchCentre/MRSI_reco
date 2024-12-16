@@ -233,11 +233,13 @@ class mrsi_data():
         self.ses  = ses
 
         self.path_in  = os.path.join(path,site,sub,ses,"mrsi")
+        self.path_mrsi  = os.path.join(path,"derivatives",site,sub,ses,"mrsi")
         self.path_maps = os.path.join(path,"derivatives",site,sub,ses,"mrsi","maps")
         self.path_lcm = os.path.join(path,"derivatives",site,sub,ses,"mrsi","lcm")
 
         print(self.path_lcm)
 
+        mkdir(self.path_mrsi)
         mkdir(self.path_lcm)
         mkdir(self.path_maps)
         self.load_data()
@@ -281,12 +283,14 @@ class mrsi_data():
 
     def write_lcm(self,mask):
         brain = ants.image_read(mask)>.5
-        brain = brain
+        brain = brain[::-1,::-1]
+        #brain = np.ones(self.shape)
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
-                for k in range(5,self.shape[2]-5):
+                for k in range(self.shape[2]):
                     suffix = "%i_%i_%i"%(i,j,k)
                     name = self.sub
+                    title = "%s_%s"%(self.site,self.sub)
                     if brain[i,j,k]:
 
                         write_control(self.path_lcm,name,suffix)
