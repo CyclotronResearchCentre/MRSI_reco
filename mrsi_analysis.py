@@ -1,6 +1,7 @@
 from t1data import T1_image
 from mrsidata import mrsi_data
 import argparse
+import os
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -11,15 +12,16 @@ if __name__ == '__main__':
     parser.add_argument('--sub',  help='subject name')
     parser.add_argument('--ses',  help='session name')
     parser.add_argument('--p'  ,  help='number of kernels that LCMODEL may run on', default=2, required=False)
+    parser.add_argument('--name', help='name of mrsi folder', default="mrsi", required=False)
 
     args = parser.parse_args()
     path = args.path
     site = args.site
     sub  = args.sub
     ses  = args.ses
-    p    = args.p
+    p    = int(args.p)
 
-    mrsi = mrsi_data(path,site,sub,ses)
+    mrsi = mrsi_data(path,site,sub,ses,args.name)
     name_dummy = mrsi.create_dummyNII()
     
     t1 = T1_image(path,site,sub,ses)

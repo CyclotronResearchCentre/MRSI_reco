@@ -156,7 +156,8 @@ def read_csa_header(csa_header_bytes):
     return csa_header
 
 def header(file):
-    dataset = pydicom.dicomio.read_file(file)
+    #dataset = pydicom.dicomio.read_file(file)
+    dataset = pydicom.dcmread(file)
 
     xx = 0x0010
     header_index = 0
@@ -179,7 +180,7 @@ def write_control(path,name,suffix):
         f.write(" key = 210387309\n")
         f.write(" Title='%s'\n"%name)
         f.write(" HZPPPM=2.972168e+02, DELTAT=3.600000e-04, NUNFIL=800\n")
-        f.write(" FILBAS='/Users/voelzkey/Desktop/CodeMatlab/reko_dzne/Basis_Set_FID_MRSI_v2.0/fid_1.300000ms.basis'\n")
+        f.write(" FILBAS='%s'\n"%os.path.join(os.path.dirname(os.path.abspath(__file__)),"basis","fid_1.300000ms.basis"))
         f.write(" DOREFS(1) = T\n")
         f.write(" DOREFS(2) = F\n")
         f.write(" WSMET = 'DSS'\n")
@@ -226,16 +227,17 @@ def write_raw(path,name,suffix,data):
 
 
 class mrsi_data():
-    def __init__(self,path,site,sub,ses):
+    def __init__(self,path,site,sub,ses,name):
         self.path = path
         self.site = site
         self.sub  = sub
         self.ses  = ses
+        self.name = name
 
-        self.path_in  = os.path.join(path,site,sub,ses,"mrsi")
-        self.path_mrsi  = os.path.join(path,"derivatives",site,sub,ses,"mrsi")
-        self.path_maps = os.path.join(path,"derivatives",site,sub,ses,"mrsi","maps")
-        self.path_lcm = os.path.join(path,"derivatives",site,sub,ses,"mrsi","lcm")
+        self.path_in  = os.path.join(path,site,sub,ses,name)
+        self.path_mrsi  = os.path.join(path,"derivatives",site,sub,ses,name)
+        self.path_maps = os.path.join(path,"derivatives",site,sub,ses,name,"maps")
+        self.path_lcm = os.path.join(path,"derivatives",site,sub,ses,name,"lcm")
 
         print(self.path_lcm)
 
@@ -251,13 +253,18 @@ class mrsi_data():
         for f in sorted(os.listdir(self.path_in)):
             if ".DS_Store" in f:
                 pass
+            elif "._" in f[:2]:
+                pass
             else:
-                data = suspect.io.load_siemens_dicom(os.path.join(self.path_in,f))
-                load3D.append(np.reshape(np.array(data),(44,44,1024)))
+                print(os.path.join(self.path_in,f))
                 self.head = header(os.path.join(self.path_in,f))
                 zPos.append(self.head["SliceLocation"])
+                data = suspect.io.load_siemens_dicom(os.path.join(self.path_in,f))
+                x = self.head["SpectroscopyAcquisitionPhaseColumns"]
+                load3D.append(np.reshape(np.array(data),(x,x,self.head["DataPointColumns"])))
         load3D = np.array(load3D)
         zPos = np.array(zPos)
+        print(load3D.shape)
         load3D = load3D[np.argsort(zPos)]
         self.shape = load3D.shape
         self.shape = (self.shape[1],self.shape[2],self.shape[0])
@@ -273,8 +280,8 @@ class mrsi_data():
         img = ants.image_read(name)
     
         (x,y,z) = self.head['VoiPosition']
-        self.spacing     = (5.,5.,5.)
-        self.origin = (x+5*self.shape[0]/2,y+5*self.shape[1]/2,z-5*self.shape[2]/2)
+        self.spacing     = (self.head["PixelSpacing"][0],self.head["PixelSpacing"][1],5.)
+        self.origin = (x+self.head["PixelSpacing"][0]*self.shape[0]/2,y+self.head["PixelSpacing"][0]*self.shape[1]/2,z-5*self.shape[2]/2)
 
         img.set_origin(self.origin)
         img.set_spacing(self.spacing)
@@ -330,9 +337,9 @@ class mrsi_data():
         self.SNR  = np.zeros(self.shape)
         self.FWHM = np.zeros(self.shape)
         name = self.sub
-        for x in range(44):
-            for y in range(44):
-                for z in range(27):
+        for x in range(self.shape[0]):
+            for y in range(self.shape[1]):
+                for z in range(self.shape[2]):
                     try:
                         t = open("%s/%s_%i_%i_%i.table"%(self.path_lcm,name,x,y,z),"r")
                         c = t.readlines()
@@ -365,7 +372,7 @@ class mrsi_data():
                     except:
                         pass
 
-        prefix = "%s_%s_%s_mrsi_" % (self.site,self.sub,self.ses)
+        prefix = "%s_%s_%s_%s_" % (self.site,self.sub,self.ses,self.name)
 
         self.save(os.path.join(self.path_maps,prefix+"tnaa.nii"), self.NAA)
         self.save(os.path.join(self.path_maps,prefix+"tcr.nii"), self.CR)
