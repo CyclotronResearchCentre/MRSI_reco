@@ -11,7 +11,7 @@ if __name__ == '__main__':
     parser.add_argument('--site', help='site')
     parser.add_argument('--sub',  help='subject name')
     parser.add_argument('--ses',  help='session name')
-    parser.add_argument('--p'  ,  help='number of kernels that LCMODEL may run on', default=2, required=False)
+    parser.add_argument('--p'  ,  help='number of kernels that LCMODEL may run on', default=os.cpu_count()//2, required=False)
     parser.add_argument('--name', help='name of mrsi folder', default="mrsi", required=False)
 
     args = parser.parse_args()
