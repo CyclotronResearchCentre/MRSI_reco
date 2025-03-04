@@ -15,7 +15,7 @@ from multiprocessing import Pool
 
 def fit(f):
     print(f)
-    os.system("/Users/voelzkey/Desktop/CodeFortran/LCModel/lcmodel < %s" %f)
+    os.system("~/.lcmodel/bin/lcmodel < %s" %f)
     
 def mkdir(path):
     if not os.path.isdir(path):
