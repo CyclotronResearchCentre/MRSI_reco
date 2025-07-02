@@ -1,9 +1,10 @@
-from t1data import T1_image
-from mrsidata import mrsi_data
+from mrsi_reco.t1data import T1_image
+from mrsi_reco.mrsidata import mrsi_data
 import argparse
 import os
+import sys
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(
         description='This is the MRSI analysis tool for the SCAIFIELD project. It assumes that data is already structured\n It reads in all .DCM (or .IMA) files, applies a k-space filter and performs spectral quantification for all voxels within brain mask (MPRAGE needed for this)',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -31,3 +32,6 @@ if __name__ == '__main__':
     mrsi.write_lcm(name_msk)
     mrsi.call_lcm(p)
     mrsi.save_nii()
+
+if __name__ == '__main__':
+    sys.exit(main())

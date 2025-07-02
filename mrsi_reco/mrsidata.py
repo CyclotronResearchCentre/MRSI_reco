@@ -1,5 +1,4 @@
 import suspect
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 
@@ -12,6 +11,7 @@ import ants
 import functools
 
 from multiprocessing import Pool
+import importlib.resources
 
 def fit(f):
     print(f)
@@ -180,7 +180,7 @@ def write_control(path,name,suffix):
         f.write(" key = 210387309\n")
         f.write(" Title='%s'\n"%name)
         f.write(" HZPPPM=2.972168e+02, DELTAT=3.600000e-04, NUNFIL=800\n")
-        f.write(" FILBAS='%s'\n"%os.path.join(os.path.dirname(os.path.abspath(__file__)),"basis","fid_1.300000ms.basis"))
+        f.write(f" FILBAS='{(importlib.resources.files('mrsi_reco.basis') / 'fid_1.300000ms.basis').as_posix()}'\n")
         f.write(" DOREFS(1) = T\n")
         f.write(" DOREFS(2) = F\n")
         f.write(" WSMET = 'DSS'\n")

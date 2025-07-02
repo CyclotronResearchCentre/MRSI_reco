@@ -1,0 +1,28 @@
+[project]
+name = "mrsi_reco"
+dynamic = ["version"]
+description = "MRSI analysis pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT License"}
+authors = [
+    { name = "Marten Veldmann", email = "marten.veldmann@dzne.de" }
+]
+keywords = ["mri", "mrsi"]
+
+[project.scripts]
+mrsi_analysis = "mrsi_reco.mrsi_analysis:main"
+
+[tool.setuptools]
+packages = ["mrsi_reco"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+mrsi_reco = ["basis/*"]
+
+[tool.setuptools_scm]
+write_to = "_version.py"
+
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
