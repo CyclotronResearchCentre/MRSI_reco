@@ -1,13 +1,15 @@
 import os
+import subprocess
 import ants
 import antspynet
 
 class T1_image():
-    def __init__(self,path,site,sub,ses):
+    def __init__(self,path,site,sub,ses,container=None):
         self.path = path
         self.site = site
         self.sub  = sub
         self.ses  = ses
+        self.container = container
 
         self.prefix = "%s_%s_%s_mprage_LR"%(site,sub,ses)
 
@@ -24,5 +26,23 @@ class T1_image():
         inp = os.path.join(os.path.join(self.path_out,"%s_brain-msk.nii"%self.prefix))
         out = os.path.join(os.path.join(self.path_out,"%s_mrsi-msk.nii.gz"%self.prefix))
 
-        os.system("flirt -in %s -ref %s -out %s -applyxfm -usesqform -verbose 3" %(inp,mrsi_file,out))
+        cmd = [
+            "flirt",
+            "-in", inp,
+            "-ref", mrsi_file,
+            "-out", out,
+            "-applyxfm",
+            "-usesqform",
+            "-verbose", "3",
+        ]
+
+        if self.container:
+            study_root = os.path.abspath(self.path)
+            cmd = [
+                "singularity", "exec",
+                "-B", f"{study_root}:{study_root}",
+                self.container,
+            ] + cmd
+
+        subprocess.run(cmd, check=True)
         return out

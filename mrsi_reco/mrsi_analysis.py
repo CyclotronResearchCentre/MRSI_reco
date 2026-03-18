@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--ses',  help='session name')
     parser.add_argument('--p'  ,  help='number of kernels that LCMODEL may run on', default=os.cpu_count()//2, required=False)
     parser.add_argument('--name', help='name of mrsi folder', default="mrsi", required=False)
+    parser.add_argument('--container', help='Path to Singularity container providing FSL (flirt).', default=None, required=False)
 
     args = parser.parse_args()
     path = args.path
@@ -21,11 +22,12 @@ def main():
     sub  = args.sub
     ses  = args.ses
     p    = int(args.p)
+    container = args.container
 
     mrsi = mrsi_data(path,site,sub,ses,args.name)
     name_dummy = mrsi.create_dummyNII()
     
-    t1 = T1_image(path,site,sub,ses)
+    t1 = T1_image(path,site,sub,ses,container=container)
     t1.calc_brainMask()
     name_msk = t1.register_toMRSI(name_dummy)
 
