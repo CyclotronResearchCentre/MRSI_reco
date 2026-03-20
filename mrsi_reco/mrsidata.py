@@ -290,7 +290,6 @@ class mrsi_data():
 
     def write_lcm(self,mask):
         brain = ants.image_read(mask)>.5
-        brain = brain[::-1,::-1]
         #brain = np.ones(self.shape)
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
