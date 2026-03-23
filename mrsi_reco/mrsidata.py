@@ -1,6 +1,7 @@
 import suspect
 import numpy as np
 import os
+import shutil
 
 import pydicom
 import struct
@@ -17,9 +18,10 @@ def fit(f):
     print(f)
     os.system("~/.lcmodel/bin/lcmodel < %s" %f)
     
-def mkdir(path):
-    if not os.path.isdir(path):
-        os.mkdir(path)
+def mkdir(path, remove_existing=False):
+    if remove_existing and os.path.isdir(path):
+        shutil.rmtree(path)
+    os.makedirs(path, exist_ok=True)
 
 def hamming(x):
     a = 25/46
@@ -242,8 +244,8 @@ class mrsi_data():
         print(self.path_lcm)
 
         mkdir(self.path_mrsi)
-        mkdir(self.path_lcm)
-        mkdir(self.path_maps)
+        mkdir(self.path_lcm, remove_existing=True)
+        mkdir(self.path_maps, remove_existing=True)
         self.load_data()
 
     def load_data(self):
@@ -261,7 +263,7 @@ class mrsi_data():
                 zPos.append(self.head["SliceLocation"])
                 data = suspect.io.load_siemens_dicom(os.path.join(self.path_in,f))
                 x = self.head["SpectroscopyAcquisitionPhaseColumns"]
-                load3D.append(np.reshape(np.array(data),(x,x,self.head["DataPointColumns"])))
+                load3D.append(np.reshape(np.array(data),(x,x,self.head["DataPointColumns"]))[::-1,::-1])
         load3D = np.array(load3D)
         zPos = np.array(zPos)
         print(load3D.shape)
@@ -289,7 +291,7 @@ class mrsi_data():
         return name
 
     def write_lcm(self,mask):
-        brain = ants.image_read(mask)>.5
+        brain = ants.image_read(mask).numpy()>.5
         #brain = np.ones(self.shape)
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
