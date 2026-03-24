@@ -15,7 +15,6 @@ from multiprocessing import Pool
 import importlib.resources
 
 def fit(f):
-    print(f)
     os.system("~/.lcmodel/bin/lcmodel < %s" %f)
     
 def mkdir(path, remove_existing=False):
@@ -58,7 +57,6 @@ def filterHamming3D(inp):
     data = inp.copy()
     x,y,z = data.shape[:3]
     H = hamming3D(x,y,z)
-    print(H.shape)
     data = np.fft.ifftshift(data, axes=(0,1,2))
     data = np.fft.ifft2(data, axes=(0,1,2))
     data = np.fft.fftshift(data, axes=(0,1,2))
@@ -241,7 +239,7 @@ class mrsi_data():
         self.path_maps = os.path.join(path,"derivatives",site,sub,ses,name,"maps")
         self.path_lcm = os.path.join(path,"derivatives",site,sub,ses,name,"lcm")
 
-        print(self.path_lcm)
+        self.mask = None
 
         mkdir(self.path_mrsi)
         mkdir(self.path_lcm, remove_existing=True)
@@ -258,7 +256,6 @@ class mrsi_data():
             elif "._" in f[:2]:
                 pass
             else:
-                print(os.path.join(self.path_in,f))
                 self.head = header(os.path.join(self.path_in,f))
                 zPos.append(self.head["SliceLocation"])
                 data = suspect.io.load_siemens_dicom(os.path.join(self.path_in,f))
@@ -266,7 +263,6 @@ class mrsi_data():
                 load3D.append(np.reshape(np.array(data),(x,x,self.head["DataPointColumns"]))[::-1,::-1])
         load3D = np.array(load3D)
         zPos = np.array(zPos)
-        print(load3D.shape)
         load3D = load3D[np.argsort(zPos)]
         self.shape = load3D.shape
         self.shape = (self.shape[1],self.shape[2],self.shape[0])
@@ -284,6 +280,9 @@ class mrsi_data():
         (x,y,z) = self.head['VoiPosition']
         self.spacing     = (self.head["PixelSpacing"][0],self.head["PixelSpacing"][1],5.)
         self.origin = (x+self.head["PixelSpacing"][0]*self.shape[0]/2,y+self.head["PixelSpacing"][0]*self.shape[1]/2,z-5*self.shape[2]/2)
+        self.direction = np.eye(3)
+        self.direction[0,0] = -1 # flip x/y as data is flipped too
+        self.direction[1,1] = -1
 
         img.set_origin(self.origin)
         img.set_spacing(self.spacing)
@@ -291,98 +290,121 @@ class mrsi_data():
         return name
 
     def write_lcm(self,mask):
-        brain = ants.image_read(mask).numpy()>.5
-        #brain = np.ones(self.shape)
+
+        self.mask = ants.image_read(mask).numpy()>.5
         for i in range(self.shape[0]):
             for j in range(self.shape[1]):
                 for k in range(self.shape[2]):
                     suffix = "%i_%i_%i"%(i,j,k)
                     name = self.sub
-                    title = "%s_%s"%(self.site,self.sub)
-                    if brain[i,j,k]:
+                    if self.mask[i,j,k]:
 
                         write_control(self.path_lcm,name,suffix)
                         write_raw(self.path_lcm,name,suffix,self.data[k,j,i])
 
-                        print((i,j,k))
-
     def call_lcm(self,p):
-        print("open call_lcm")
+        print("MRSI: Run LCmodel in parallel with %i processes"%p)
         files = [os.path.join(self.path_lcm,f) for f in os.listdir(self.path_lcm) if ".control" in f]
-        print(self.path_lcm)
-        print(len(files))
 
         with Pool(p) as P:
             P.map(fit, files)
 
     def save(self,name,data):
-            img = nib.Nifti1Image(data, np.identity(4))
-            nib.save(img, name)
-            
-            nii = ants.image_read(name)
-            nii.set_origin(self.origin)
-            nii.set_spacing(self.spacing)
-            ants.image_write(nii,name)
+        if data.ndim == 4:
+            origin = self.origin + (0,)
+            spacing = self.spacing + (1,)
+            direction = np.eye(4)
+            direction[:3,:3] = self.direction
+        else:
+            origin = self.origin
+            spacing = self.spacing
+            direction = self.direction
+
+        print(f"MRSI: Save file {name}.")
+        img = ants.from_numpy(data, origin=origin, spacing=spacing, direction=direction)
+        ants.image_write(img,name)
 
     def save_nii(self):
-    
-        self.NAA  = np.zeros(self.shape)
-        self.CR   = np.zeros(self.shape)
-        self.GABA = np.zeros(self.shape)
-        self.GLX  = np.zeros(self.shape)
-        self.CHO  = np.zeros(self.shape)
-        self.THG  = np.zeros(self.shape)
-        self.INS  = np.zeros(self.shape)
-        self.ASP  = np.zeros(self.shape)
-        self.TAU  = np.zeros(self.shape)
+        self.NAA  = np.zeros((*self.shape,2))
+        self.CR   = np.zeros((*self.shape,2))
+        self.GABA = np.zeros((*self.shape,2))
+        self.GLX  = np.zeros((*self.shape,2))
+        self.CHO  = np.zeros((*self.shape,2))
+        self.THG  = np.zeros((*self.shape,2))
+        self.INS  = np.zeros((*self.shape,2))
+        self.ASP  = np.zeros((*self.shape,2))
+        self.TAU  = np.zeros((*self.shape,2))
         self.SNR  = np.zeros(self.shape)
         self.FWHM = np.zeros(self.shape)
         name = self.sub
         for x in range(self.shape[0]):
             for y in range(self.shape[1]):
                 for z in range(self.shape[2]):
-                    try:
+                    if self.mask[x,y,z]:
                         t = open("%s/%s_%i_%i_%i.table"%(self.path_lcm,name,x,y,z),"r")
                         c = t.readlines()
                         for line in c:
                             if "NAA+NAAG" in line:
-                                self.NAA[x,y,z] = float(line.split()[0])
+                                self.NAA[x,y,z,0] = float(line.split()[0])
+                                self.NAA[x,y,z,1] = float(line.split()[1][:-1])
                             elif " Cr+PCr" in line:
-                                self.CR[x,y,z] = float(line.split()[0])    
+                                self.CR[x,y,z,0] = float(line.split()[0])    
+                                self.CR[x,y,z,1] = float(line.split()[1][:-1])   
                             elif "GABA" in line:
                                 line =line.replace("+GABA"," GABA")
                                 line =line.replace("-GABA"," GABA")
-                                self.GABA[x,y,z] = float(line.split()[0])
+                                self.GABA[x,y,z,0] = float(line.split()[0])
+                                self.GABA[x,y,z,1] = float(line.split()[1][:-1])
                             elif "Glu+Gln" in line:
-                                self.GLX[x,y,z] = float(line.split()[0])
+                                self.GLX[x,y,z,0] = float(line.split()[0])
+                                self.GLX[x,y,z,1] = float(line.split()[1][:-1])
                             elif "GPC+PCh" in line:
-                                self.CHO[x,y,z] = float(line.split()[0])
+                                self.CHO[x,y,z,0] = float(line.split()[0])
+                                self.CHO[x,y,z,1] = float(line.split()[1][:-1])
                             elif "TwoHG" in line:
-                                self.THG[x,y,z] = float(line.split()[0])
+                                self.THG[x,y,z,0] = float(line.split()[0])
+                                self.THG[x,y,z,1] = float(line.split()[1][:-1])
                             elif "Ins" in line:
-                                self.INS[x,y,z] = float(line.split()[0])
+                                self.INS[x,y,z,0] = float(line.split()[0])
+                                self.INS[x,y,z,1] = float(line.split()[1][:-1])
                             elif "Asp" in line:
                                 line =line.replace("+Asp"," Asp")
                                 line =line.replace("-Asp"," Asp")
-                                self.ASP[x,y,z] = float(line.split()[0])
+                                self.ASP[x,y,z,0] = float(line.split()[0])
+                                self.ASP[x,y,z,1] = float(line.split()[1][:-1])
                             elif "Tau" in line:
-                                self.TAU[x,y,z] = float(line.split()[0])
+                                self.TAU[x,y,z,0] = float(line.split()[0])
+                                self.TAU[x,y,z,1] = float(line.split()[1][:-1])
                             elif "S/N =" in line:
                                 self.SNR[x,y,z] = float(line.split()[-1])
                                 self.FWHM[x,y,z] = float(line.split()[2])
-                    except:
-                        pass
-
+ 
         prefix = "%s_%s_%s_%s_" % (self.site,self.sub,self.ses,self.name)
-
-        self.save(os.path.join(self.path_maps,prefix+"tnaa.nii"), self.NAA)
-        self.save(os.path.join(self.path_maps,prefix+"tcr.nii"), self.CR)
-        self.save(os.path.join(self.path_maps,prefix+"gaba.nii"), self.GABA)
-        self.save(os.path.join(self.path_maps,prefix+"glx.nii"), self.GLX)
-        self.save(os.path.join(self.path_maps,prefix+"tcho.nii"), self.CHO)
-        self.save(os.path.join(self.path_maps,prefix+"2HG.nii"), self.THG)
-        self.save(os.path.join(self.path_maps,prefix+"ins.nii"), self.INS)
-        self.save(os.path.join(self.path_maps,prefix+"asp.nii"), self.ASP)
-        self.save(os.path.join(self.path_maps,prefix+"tau.nii"), self.TAU)
-        self.save(os.path.join(self.path_maps,prefix+"snr.nii"), self.SNR)
-        self.save(os.path.join(self.path_maps,prefix+"fwhm.nii"), self.FWHM)
+ 
+        path_maps_raw = os.path.join(self.path_maps,"raw")
+        mkdir(path_maps_raw)
+        self.save(os.path.join(path_maps_raw,prefix+"tnaa.nii"), self.NAA)
+        self.save(os.path.join(path_maps_raw,prefix+"tcr.nii"), self.CR)
+        self.save(os.path.join(path_maps_raw,prefix+"gaba.nii"), self.GABA)
+        self.save(os.path.join(path_maps_raw,prefix+"glx.nii"), self.GLX)
+        self.save(os.path.join(path_maps_raw,prefix+"tcho.nii"), self.CHO)
+        self.save(os.path.join(path_maps_raw,prefix+"2HG.nii"), self.THG)
+        self.save(os.path.join(path_maps_raw,prefix+"ins.nii"), self.INS)
+        self.save(os.path.join(path_maps_raw,prefix+"asp.nii"), self.ASP)
+        self.save(os.path.join(path_maps_raw,prefix+"tau.nii"), self.TAU)
+        self.save(os.path.join(path_maps_raw,prefix+"snr.nii"), self.SNR)
+        self.save(os.path.join(path_maps_raw,prefix+"fwhm.nii"), self.FWHM)
+        
+        QA_glob = (self.SNR >4) * (self.FWHM < .15)
+        QA_NAA  = self.NAA[...,1] < 15
+        QA_GLX  = self.GLX[...,1] < 15
+        QA_CHO  = self.CHO[...,1] < 15
+        QA_CR  = self.CR[...,1] < 15
+ 
+        QA_NAACR = self.NAA[...,0]/self.CR[...,0]/(QA_glob*QA_CR*QA_NAA)
+        QA_GLXCR = self.GLX[...,0]/self.CR[...,0]/(QA_glob*QA_CR*QA_GLX)
+        QA_CHOCR = self.CHO[...,0]/self.CR[...,0]/(QA_glob*QA_CR*QA_CHO)
+        self.save(os.path.join(self.path_maps,prefix+"naaCr.nii"), QA_NAACR)
+        self.save(os.path.join(self.path_maps,prefix+"glxCr.nii"), QA_GLXCR)
+        self.save(os.path.join(self.path_maps,prefix+"choCr.nii"), QA_CHOCR)
+ 
