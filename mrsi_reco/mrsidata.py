@@ -395,15 +395,22 @@ class mrsi_data():
         self.save(os.path.join(path_maps_raw,prefix+"snr.nii"), self.SNR)
         self.save(os.path.join(path_maps_raw,prefix+"fwhm.nii"), self.FWHM)
         
-        QA_glob = (self.SNR >4) * (self.FWHM < .15)
+        QA_glob = (self.SNR > 4) & (self.FWHM < 0.15)
         QA_NAA  = self.NAA[...,1] < 15
         QA_GLX  = self.GLX[...,1] < 15
         QA_CHO  = self.CHO[...,1] < 15
-        QA_CR  = self.CR[...,1] < 15
- 
-        QA_NAACR = self.NAA[...,0]/self.CR[...,0]/(QA_glob*QA_CR*QA_NAA)
-        QA_GLXCR = self.GLX[...,0]/self.CR[...,0]/(QA_glob*QA_CR*QA_GLX)
-        QA_CHOCR = self.CHO[...,0]/self.CR[...,0]/(QA_glob*QA_CR*QA_CHO)
+        QA_CR   = self.CR[...,1] < 15
+
+        cr_signal = self.CR[...,0]
+        valid_base = QA_glob & QA_CR & (cr_signal != 0)
+
+        # Keep invalid voxels at zero and only compute ratios where QA passes and Cr is non-zero.
+        QA_NAACR = np.zeros(self.shape, dtype=np.float32)
+        QA_GLXCR = np.zeros(self.shape, dtype=np.float32)
+        QA_CHOCR = np.zeros(self.shape, dtype=np.float32)
+        np.divide(self.NAA[...,0], cr_signal, out=QA_NAACR, where=valid_base & QA_NAA)
+        np.divide(self.GLX[...,0], cr_signal, out=QA_GLXCR, where=valid_base & QA_GLX)
+        np.divide(self.CHO[...,0], cr_signal, out=QA_CHOCR, where=valid_base & QA_CHO)
         self.save(os.path.join(self.path_maps,prefix+"naaCr.nii"), QA_NAACR)
         self.save(os.path.join(self.path_maps,prefix+"glxCr.nii"), QA_GLXCR)
         self.save(os.path.join(self.path_maps,prefix+"choCr.nii"), QA_CHOCR)
