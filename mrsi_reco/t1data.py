@@ -4,17 +4,16 @@ import ants
 import antspynet
 
 class T1_image():
-    def __init__(self,path,site,sub,ses,container=None):
+    def __init__(self,path,sub,ses,container=None):
         self.path = path
-        self.site = site
         self.sub  = sub
         self.ses  = ses
         self.container = container
 
-        self.prefix = "%s_%s_%s_mprage_LR"%(site,sub,ses)
+        self.prefix = "%s_%s_mprage_LR"%(self.sub,self.ses)
 
-        self.rawImage = ants.image_read(os.path.join(path,site,sub,ses,"magn",'%s.nii'%self.prefix))
-        self.path_out = os.path.join(path,"derivatives",site,sub,ses,"magn")
+        self.rawImage = ants.image_read(os.path.join(path,"Nifti",self.sub,self.ses,"magn",'%s.nii'%self.prefix))
+        self.path_out = os.path.join(path,"derivatives",self.sub,self.ses,"magn")
 
     def calc_brainMask(self):
         brain =antspynet.brain_extraction(self.rawImage, modality="t1")

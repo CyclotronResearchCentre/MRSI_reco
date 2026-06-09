@@ -9,7 +9,6 @@ def main():
         description='This is the MRSI analysis tool for the SCAIFIELD project. It assumes that data is already structured\n It reads in all .DCM (or .IMA) files, applies a k-space filter and performs spectral quantification for all voxels within brain mask (MPRAGE needed for this)',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--path', help='path #BIDS folder')
-    parser.add_argument('--site', help='site')
     parser.add_argument('--sub',  help='subject name')
     parser.add_argument('--ses',  help='session name')
     parser.add_argument('--p'  ,  help='number of kernels that LCMODEL may run on', default=os.cpu_count()//2, required=False)
@@ -18,16 +17,15 @@ def main():
 
     args = parser.parse_args()
     path = args.path
-    site = args.site
     sub  = args.sub
     ses  = args.ses
     p    = int(args.p)
     container = args.container
 
-    mrsi = mrsi_data(path,site,sub,ses,args.name)
+    mrsi = mrsi_data(path,sub,ses,args.name)
     name_dummy = mrsi.create_dummyNII()
     
-    t1 = T1_image(path,site,sub,ses,container=container)
+    t1 = T1_image(path,sub,ses,container=container)
     t1.calc_brainMask()
     name_msk = t1.register_toMRSI(name_dummy)
 

@@ -227,17 +227,16 @@ def write_raw(path,name,suffix,data):
 
 
 class mrsi_data():
-    def __init__(self,path,site,sub,ses,name):
+    def __init__(self,path,sub,ses,name):
         self.path = path
-        self.site = site
         self.sub  = sub
         self.ses  = ses
         self.name = name
 
-        self.path_in  = os.path.join(path,site,sub,ses,name)
-        self.path_mrsi  = os.path.join(path,"derivatives",site,sub,ses,name)
-        self.path_maps = os.path.join(path,"derivatives",site,sub,ses,name,"maps")
-        self.path_lcm = os.path.join(path,"derivatives",site,sub,ses,name,"lcm")
+        self.path_in  = os.path.join(path,"Nifti",sub,ses,name)
+        self.path_mrsi  = os.path.join(path,"derivatives",sub,ses,name)
+        self.path_maps = os.path.join(path,"derivatives",sub,ses,name,"maps")
+        self.path_lcm = os.path.join(path,"derivatives",sub,ses,name,"lcm")
 
         self.mask = None
 
@@ -379,7 +378,7 @@ class mrsi_data():
                                 self.SNR[x,y,z] = float(line.split()[-1])
                                 self.FWHM[x,y,z] = float(line.split()[2])
  
-        prefix = "%s_%s_%s_%s_" % (self.site,self.sub,self.ses,self.name)
+        prefix = "%s_%s_%s_" % (self.sub,self.ses,self.name)
  
         path_maps_raw = os.path.join(self.path_maps,"raw")
         mkdir(path_maps_raw)

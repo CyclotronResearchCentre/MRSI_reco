@@ -14,9 +14,8 @@ This tool performs the SCAIFIELD MRSI analysis
 just call 
 
 ```
-python mrsi_analysis.py [-h] [--path PATH] [--site SITE] [--sub SUB] [--ses SES]
+python mrsi_analysis.py [-h] [--path PATH] [--sub SUB] [--ses SES]
   --path PATH  path #BIDS folder (default: None)
-  --site SITE  site (default: None)
   --sub SUB    subject name (default: None)
   --ses SES    session name (default: None)
 ```
@@ -25,9 +24,9 @@ python mrsi_analysis.py [-h] [--path PATH] [--site SITE] [--sub SUB] [--ses SES]
 
 You can find the output in
 
-```path/derivatives/site/sub/ses/mrsi/lcm```
+```path/derivatives/sub/ses/mrsi/lcm```
 
-```path/derivatives/site/sub/ses/mrsi/maps```
+```path/derivatives/sub/ses/mrsi/maps```
 
 - lcm
     - LCModel input and output of each voxel within brain mask
